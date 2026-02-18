@@ -157,7 +157,7 @@ export function TrellisMap({ networks }: Props) {
             );
           })}
 
-          {/* Connection links from L2s to Ethereum */}
+          {/* Connection links from L2s to Ethereum - rendered BEFORE nodes */}
           {ethereum && nodes.filter((n) => n.network.category === "l2").map((n) => {
             const stage = n.network.security_stage ?? 0;
             const style = getConnectorStyle(stage);
@@ -170,14 +170,42 @@ export function TrellisMap({ networks }: Props) {
             const dx = ex - nx;
             const dy = ey - ny;
             const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist === 0) return null;
             const ux = dx / dist;
             const uy = dy / dist;
             
             // Start from edge of L2 node, end at edge of Ethereum
-            const startX = nx + ux * (n.radius + 5);
-            const startY = ny + uy * (n.radius + 5);
-            const endX = ex - ux * (ethereum.radius + 5);
-            const endY = ey - uy * (ethereum.radius + 5);
+            const startX = nx + ux * (n.radius + 8);
+            const startY = ny + uy * (n.radius + 8);
+            const endX = ex - ux * (ethereum.radius + 8);
+            const endY = ey - uy * (ethereum.radius + 8);
+
+            // Check if connector would overlap with other nodes
+            // If so, reduce opacity
+            const otherNodes = nodes.filter(
+              (other) => other.network.name !== n.network.name && 
+                         other.network.category !== "ethereum"
+            );
+            
+            let hasOverlap = false;
+            for (const other of otherNodes) {
+              const ox = other.x || 0;
+              const oy = other.y || 0;
+              // Distance from point to line segment
+              const t = Math.max(0, Math.min(1, 
+                ((ox - startX) * (endX - startX) + (oy - startY) * (endY - startY)) / 
+                ((endX - startX) ** 2 + (endY - startY) ** 2)
+              ));
+              const nearX = startX + t * (endX - startX);
+              const nearY = startY + t * (endY - startY);
+              const distToLine = Math.sqrt((ox - nearX) ** 2 + (oy - nearY) ** 2);
+              if (distToLine < other.radius + 5) {
+                hasOverlap = true;
+                break;
+              }
+            }
+
+            const baseOpacity = hasOverlap ? 0.15 : 0.3;
 
             // Flow particles (always toward Ethereum for Stage 0/1)
             const particleCount = stage === 2 ? 4 : 3;
@@ -196,14 +224,14 @@ export function TrellisMap({ networks }: Props) {
             });
 
             return (
-              <g key={n.network.name}>
+              <g key={n.network.name} opacity={hasOverlap ? 0.5 : 1}>
                 {/* Main connector line */}
                 <line
                   x1={startX} y1={startY}
                   x2={endX} y2={endY}
                   stroke={COLORS.ethereum}
                   strokeWidth={style.strokeWidth}
-                  strokeOpacity={0.35}
+                  strokeOpacity={baseOpacity}
                   strokeDasharray={style.strokeDasharray}
                   markerEnd={stage === 2 ? "url(#arrow-end)" : undefined}
                   markerStart={stage === 2 ? "url(#arrow-start)" : undefined}
@@ -216,7 +244,7 @@ export function TrellisMap({ networks }: Props) {
                     cy={p.py}
                     r={stage === 0 ? 4 : stage === 1 ? 3 : 2.5}
                     fill={COLORS.ethereum}
-                    opacity={stage === 0 ? 0.9 : 0.7}
+                    opacity={(stage === 0 ? 0.9 : 0.7) * (hasOverlap ? 0.5 : 1)}
                   />
                 ))}
               </g>

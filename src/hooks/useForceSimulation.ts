@@ -7,25 +7,23 @@ import { getStageDistance } from "../utils/shapes";
 export interface SimNode extends d3.SimulationNodeDatum {
   network: Network;
   radius: number;
-  targetDistance: number; // Distance from Ethereum based on stage
+  targetDistance: number;
 }
 
 /**
  * Force simulation that positions networks around Ethereum.
  * 
  * Distance rules (from Ethereum center):
- * - Stage 2: closest (5 base units) — fully decentralized
- * - Stage 1: mid (15 base units) — safety net
- * - Stage 0: far (30 base units) — training wheels
- * - External L1s: outer edge (40+ base units)
- * 
- * Size: proportional to stablecoin liquidity
+ * - Stage 2: 10 base units (closest)
+ * - Stage 1: 22 base units (mid)
+ * - Stage 0: 40 base units (far)
+ * - External L1s: 60 base units (outer edge)
  */
 export function useForceSimulation(
   networks: Network[],
   width: number,
   height: number,
-  sizeMetric: "tvl" | "stablecoins" | "transactions" = "stablecoins"
+  _sizeMetric: "tvl" | "stablecoins" | "transactions" = "stablecoins"
 ) {
   const [nodes, setNodes] = useState<SimNode[]>([]);
   const simRef = useRef<d3.Simulation<SimNode, undefined> | null>(null);
@@ -33,66 +31,100 @@ export function useForceSimulation(
   useEffect(() => {
     if (!width || !height) return;
 
-    // Always use stablecoins for sizing as per spec
     const radiusScale = createRadiusScale(networks, "stablecoins");
     const cx = width / 2;
     const cy = height / 2;
-    
-    // Base unit for distance scaling (responsive to viewport)
     const baseUnit = Math.min(width, height) / 100;
 
-    const simNodes: SimNode[] = networks.map((n) => {
-      const val = getMetricValue(n, "stablecoins");
-      const r = val > 0 ? radiusScale(val) : 20;
-      const targetDist = getStageDistance(n.security_stage, baseUnit);
-      
-      return { 
-        network: n, 
-        radius: r,
-        targetDistance: n.category === "ethereum" ? 0 : targetDist,
-      };
+    // Group networks by stage for even angular distribution
+    const byStage: Record<string, Network[]> = {
+      'eth': [],
+      'stage2': [],
+      'stage1': [],
+      'stage0': [],
+      'l1': [],
+    };
+
+    networks.forEach((n) => {
+      if (n.category === "ethereum") byStage.eth.push(n);
+      else if (n.category === "external_l1") byStage.l1.push(n);
+      else if (n.security_stage === 2) byStage.stage2.push(n);
+      else if (n.security_stage === 1) byStage.stage1.push(n);
+      else byStage.stage0.push(n);
     });
 
-    // Assign initial positions
-    simNodes.forEach((sn, idx) => {
-      if (sn.network.category === "ethereum") {
-        // Ethereum fixed at center
-        sn.x = cx;
-        sn.y = cy;
-        sn.fx = cx;
-        sn.fy = cy;
-      } else {
-        // Distribute others around their target orbit
-        const angle = (idx / simNodes.length) * Math.PI * 2 + Math.random() * 0.3;
-        sn.x = cx + Math.cos(angle) * sn.targetDistance;
-        sn.y = cy + Math.sin(angle) * sn.targetDistance;
-      }
+    const simNodes: SimNode[] = [];
+
+    // Position Ethereum at center (fixed)
+    byStage.eth.forEach((n) => {
+      const val = getMetricValue(n, "stablecoins");
+      const r = val > 0 ? radiusScale(val) : 20;
+      simNodes.push({
+        network: n,
+        radius: r,
+        targetDistance: 0,
+        x: cx,
+        y: cy,
+        fx: cx,
+        fy: cy,
+      });
     });
+
+    // Helper to distribute nodes evenly around a ring
+    const distributeOnRing = (
+      nets: Network[],
+      distance: number,
+      startAngle: number = 0
+    ) => {
+      const count = nets.length;
+      if (count === 0) return;
+      
+      const angleStep = (2 * Math.PI) / Math.max(count, 1);
+      
+      nets.forEach((n, i) => {
+        const val = getMetricValue(n, "stablecoins");
+        const r = val > 0 ? radiusScale(val) : 20;
+        const angle = startAngle + i * angleStep;
+        
+        simNodes.push({
+          network: n,
+          radius: r,
+          targetDistance: distance,
+          x: cx + Math.cos(angle) * distance,
+          y: cy + Math.sin(angle) * distance,
+        });
+      });
+    };
+
+    // Distribute each stage on its ring with offset angles to avoid alignment
+    distributeOnRing(byStage.stage2, getStageDistance(2, baseUnit), 0);
+    distributeOnRing(byStage.stage1, getStageDistance(1, baseUnit), Math.PI / 6);
+    distributeOnRing(byStage.stage0, getStageDistance(0, baseUnit), Math.PI / 8);
+    distributeOnRing(byStage.l1, getStageDistance(null, baseUnit), Math.PI / 4);
 
     if (simRef.current) simRef.current.stop();
 
+    // Simulation: mainly for collision avoidance within rings
     const sim = d3
       .forceSimulation(simNodes)
-      // Prevent overlapping - lower strength so radial dominates
+      // Collision to prevent overlap
       .force("collision", d3.forceCollide<SimNode>()
-        .radius((d) => d.radius + 6)
-        .strength(0.7)
+        .radius((d) => d.radius + 8)
+        .strength(0.5)
       )
-      // Pull nodes STRONGLY to their stage-appropriate orbit
+      // VERY strong radial force to keep nodes on their orbit
       .force("radial", d3.forceRadial<SimNode>(
         (d) => d.targetDistance,
-        cx, 
+        cx,
         cy
-      ).strength((d) => d.network.category === "ethereum" ? 0 : 1.5))
-      // Very gentle centering force
-      .force("center", d3.forceCenter(cx, cy).strength(0.005))
-      // Slight repulsion to spread nodes on same orbit
+      ).strength((d) => d.network.category === "ethereum" ? 0 : 2.0))
+      // Repulsion only between nearby nodes (spread on same ring)
       .force("charge", d3.forceManyBody<SimNode>()
-        .strength(-20)
-        .distanceMax(80)
+        .strength((d) => d.network.category === "external_l1" ? -50 : -15)
+        .distanceMax(60)
       )
-      .alpha(1.0)
-      .alphaDecay(0.01)
+      .alpha(0.8)
+      .alphaDecay(0.02)
       .on("tick", () => {
         setNodes([...simNodes]);
       });
@@ -100,7 +132,7 @@ export function useForceSimulation(
     simRef.current = sim;
 
     return () => { sim.stop(); };
-  }, [networks, width, height, sizeMetric]);
+  }, [networks, width, height]);
 
   return nodes;
 }
