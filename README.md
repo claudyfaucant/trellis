@@ -113,6 +113,19 @@ src/
 4. **Shapes differentiate tech stacks** — instantly see if a network is OP, Arbitrum, or ZK-based
 5. **Flow direction** shows value movement — Stage 0 funds flow toward ETH security
 
+## 📋 Full Specification
+
+For complete technical specification to recreate this project, see:
+
+**[docs/SPECIFICATION.md](docs/SPECIFICATION.md)**
+
+Covers:
+- Visual design rules (shapes, colors, distances, connectors)
+- Data model and sources
+- Force simulation parameters
+- Interaction patterns
+- Accessibility requirements
+
 ## 🎨 Customization
 
 Edit `src/utils/constants.ts` for colors:
