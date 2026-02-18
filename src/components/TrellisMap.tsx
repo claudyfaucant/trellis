@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import type { Network } from "../data/types";
 import { useForceSimulation } from "../hooks/useForceSimulation";
 import { useResponsive } from "../hooks/useResponsive";
-import { COLORS, STAGE_COLORS, GRID_COLOR, BG_COLOR } from "../utils/constants";
+import { COLORS, GRID_COLOR, BG_COLOR } from "../utils/constants";
 import { getConnectorStyle } from "../utils/shapes";
 import { NetworkShape } from "./NetworkShape";
 import { Tooltip } from "./Tooltip";
@@ -139,7 +139,7 @@ export function TrellisMap({ networks }: Props) {
           ))}
 
           {/* Stage orbit rings (visual guide) */}
-          {ethereum && [5, 15, 30].map((dist) => {
+          {ethereum && [10, 22, 40].map((dist) => {
             const baseUnit = Math.min(width, height) / 100;
             const r = dist * baseUnit;
             return (
@@ -152,7 +152,7 @@ export function TrellisMap({ networks }: Props) {
                 stroke={GRID_COLOR}
                 strokeWidth={1}
                 strokeDasharray="4,8"
-                opacity={0.5}
+                opacity={0.4}
               />
             );
           })}
@@ -228,8 +228,6 @@ export function TrellisMap({ networks }: Props) {
             const x = n.x || 0;
             const y = n.y || 0;
             const isEth = n.network.category === "ethereum";
-            const stage = n.network.security_stage;
-            const stageColor = stage !== null ? STAGE_COLORS[stage as keyof typeof STAGE_COLORS] : null;
 
             return (
               <g
@@ -241,17 +239,6 @@ export function TrellisMap({ networks }: Props) {
                 onMouseLeave={() => setHoveredNode(null)}
                 onClick={() => setSelectedNetwork(n.network)}
               >
-                {/* Security stage ring (L2s only) */}
-                {stageColor && (
-                  <circle
-                    r={n.radius + 5}
-                    fill="none"
-                    stroke={stageColor}
-                    strokeWidth={3}
-                    opacity={0.8}
-                  />
-                )}
-
                 {/* Main shape */}
                 <NetworkShape
                   network={n.network}
@@ -259,16 +246,20 @@ export function TrellisMap({ networks }: Props) {
                   pulse={isEth ? ethPulse : 1}
                 />
 
-                {/* Stage indicator icon */}
-                {stage !== null && (
-                  <text
-                    y={-n.radius - 10}
-                    textAnchor="middle"
-                    fontSize={14}
-                    fill="white"
-                  >
-                    {stage === 0 ? "⚠️" : stage === 1 ? "🔒" : "✅"}
-                  </text>
+                {/* Ethereum logo */}
+                {isEth && (
+                  <g transform={`scale(${n.radius / 40})`}>
+                    <path
+                      d="M0,-32 L18,0 L0,12 L-18,0 Z"
+                      fill="white"
+                      opacity={0.9}
+                    />
+                    <path
+                      d="M0,12 L18,0 L0,32 L-18,0 Z"
+                      fill="white"
+                      opacity={0.6}
+                    />
+                  </g>
                 )}
 
                 {/* Network name label */}

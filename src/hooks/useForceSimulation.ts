@@ -73,26 +73,26 @@ export function useForceSimulation(
 
     const sim = d3
       .forceSimulation(simNodes)
-      // Prevent overlapping
+      // Prevent overlapping - lower strength so radial dominates
       .force("collision", d3.forceCollide<SimNode>()
-        .radius((d) => d.radius + 8)
-        .strength(0.9)
+        .radius((d) => d.radius + 6)
+        .strength(0.7)
       )
-      // Pull nodes to their stage-appropriate orbit
+      // Pull nodes STRONGLY to their stage-appropriate orbit
       .force("radial", d3.forceRadial<SimNode>(
         (d) => d.targetDistance,
         cx, 
         cy
-      ).strength((d) => d.network.category === "ethereum" ? 0 : 0.8))
-      // Gentle centering force
-      .force("center", d3.forceCenter(cx, cy).strength(0.01))
+      ).strength((d) => d.network.category === "ethereum" ? 0 : 1.5))
+      // Very gentle centering force
+      .force("center", d3.forceCenter(cx, cy).strength(0.005))
       // Slight repulsion to spread nodes on same orbit
       .force("charge", d3.forceManyBody<SimNode>()
-        .strength(-30)
-        .distanceMax(100)
+        .strength(-20)
+        .distanceMax(80)
       )
-      .alpha(0.8)
-      .alphaDecay(0.015)
+      .alpha(1.0)
+      .alphaDecay(0.01)
       .on("tick", () => {
         setNodes([...simNodes]);
       });
