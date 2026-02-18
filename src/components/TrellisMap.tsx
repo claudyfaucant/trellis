@@ -3,22 +3,31 @@ import * as d3 from "d3";
 import type { Network } from "../data/types";
 import { useForceSimulation } from "../hooks/useForceSimulation";
 import { useResponsive } from "../hooks/useResponsive";
-import { getNodeColor } from "../utils/scales";
-import type { SizeMetric } from "../utils/scales";
 import { COLORS, STAGE_COLORS, GRID_COLOR, BG_COLOR } from "../utils/constants";
+import { getConnectorStyle } from "../utils/shapes";
+import { NetworkShape } from "./NetworkShape";
 import { Tooltip } from "./Tooltip";
 import { InfoPanel } from "./InfoPanel";
 
 interface Props {
   networks: Network[];
-  sizeMetric: SizeMetric;
 }
 
-export function TrellisMap({ networks, sizeMetric }: Props) {
+/**
+ * Main visualization component.
+ * 
+ * Visual rules:
+ * - Ethereum at center (8-point star)
+ * - L2s orbit at stage-based distances: Stage 2 (5), Stage 1 (15), Stage 0 (30)
+ * - Shapes by type: OP=hexagon, Arbitrum=diamond, ZK=pentagon, L1=circle
+ * - Size proportional to stablecoin liquidity
+ * - Connectors: Stage 2=solid bidirectional, Stage 1=dashed, Stage 0=droplets→ETH
+ */
+export function TrellisMap({ networks }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const { width, height } = useResponsive(containerRef);
-  const nodes = useForceSimulation(networks, width, height, sizeMetric);
+  const nodes = useForceSimulation(networks, width, height);
   const [hoveredNode, setHoveredNode] = useState<{ network: Network; x: number; y: number } | null>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
   const [transform, setTransform] = useState(d3.zoomIdentity);
@@ -38,20 +47,12 @@ export function TrellisMap({ networks, sizeMetric }: Props) {
 
   const ethereum = useMemo(() => nodes.find((n) => n.network.category === "ethereum"), [nodes]);
 
-  // Bridge volume scale for link widths
-  const bridgeScale = useMemo(() => {
-    const vols = networks
-      .filter((n) => n.monthly_bridge_volume_million_usd)
-      .map((n) => n.monthly_bridge_volume_million_usd!);
-    return d3.scaleLinear().domain([0, d3.max(vols) || 1]).range([1, 6]);
-  }, [networks]);
-
-  // Flow particles state
+  // Animation phase for flow particles
   const [particlePhase, setParticlePhase] = useState(0);
   useEffect(() => {
     let frame: number;
     const animate = () => {
-      setParticlePhase((p) => (p + 0.004) % 1);
+      setParticlePhase((p) => (p + 0.003) % 1);
       frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
@@ -91,6 +92,41 @@ export function TrellisMap({ networks, sizeMetric }: Props) {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          {/* Droplet marker for Stage 0 */}
+          <marker
+            id="droplet"
+            viewBox="0 0 10 10"
+            refX="5"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto"
+          >
+            <circle cx="5" cy="5" r="3" fill={COLORS.ethereum} opacity="0.8" />
+          </marker>
+          {/* Arrow marker for bidirectional Stage 2 */}
+          <marker
+            id="arrow-end"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={COLORS.ethereum} opacity="0.6" />
+          </marker>
+          <marker
+            id="arrow-start"
+            viewBox="0 0 10 10"
+            refX="1"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto"
+          >
+            <path d="M 10 0 L 0 5 L 10 10 z" fill={COLORS.ethereum} opacity="0.6" />
+          </marker>
         </defs>
 
         <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
@@ -102,55 +138,95 @@ export function TrellisMap({ networks, sizeMetric }: Props) {
             <line key={`gh${i}`} x1={0} y1={i * 40} x2={width} y2={i * 40} stroke={GRID_COLOR} strokeWidth={0.5} />
           ))}
 
-          {/* Connection links */}
+          {/* Stage orbit rings (visual guide) */}
+          {ethereum && [5, 15, 30].map((dist) => {
+            const baseUnit = Math.min(width, height) / 100;
+            const r = dist * baseUnit;
+            return (
+              <circle
+                key={`orbit-${dist}`}
+                cx={ethereum.x || 0}
+                cy={ethereum.y || 0}
+                r={r}
+                fill="none"
+                stroke={GRID_COLOR}
+                strokeWidth={1}
+                strokeDasharray="4,8"
+                opacity={0.5}
+              />
+            );
+          })}
+
+          {/* Connection links from L2s to Ethereum */}
           {ethereum && nodes.filter((n) => n.network.category === "l2").map((n) => {
-            const vol = n.network.monthly_bridge_volume_million_usd || 0;
-            const sw = bridgeScale(vol);
-            const stage = n.network.security_stage;
-            const dash = stage === 2 ? undefined : stage === 1 ? "8,4" : "3,3";
+            const stage = n.network.security_stage ?? 0;
+            const style = getConnectorStyle(stage);
             const ex = ethereum.x || 0;
             const ey = ethereum.y || 0;
             const nx = n.x || 0;
             const ny = n.y || 0;
 
-            // Multiple flow particles along the link
-            const particles = [0, 0.33, 0.66].map((offset) => {
-              const t = (particlePhase + offset) % 1;
-              const px = nx + (ex - nx) * t;
-              const py = ny + (ey - ny) * t;
-              return { px, py, t };
+            // Calculate line endpoints (offset from node edges)
+            const dx = ex - nx;
+            const dy = ey - ny;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const ux = dx / dist;
+            const uy = dy / dist;
+            
+            // Start from edge of L2 node, end at edge of Ethereum
+            const startX = nx + ux * (n.radius + 5);
+            const startY = ny + uy * (n.radius + 5);
+            const endX = ex - ux * (ethereum.radius + 5);
+            const endY = ey - uy * (ethereum.radius + 5);
+
+            // Flow particles (always toward Ethereum for Stage 0/1)
+            const particleCount = stage === 2 ? 4 : 3;
+            const particles = Array.from({ length: particleCount }).map((_, i) => {
+              const offset = i / particleCount;
+              let t = (particlePhase + offset) % 1;
+              
+              // Stage 2: bidirectional (alternate directions)
+              if (stage === 2 && i % 2 === 1) {
+                t = 1 - t;
+              }
+              
+              const px = startX + (endX - startX) * t;
+              const py = startY + (endY - startY) * t;
+              return { px, py };
             });
 
             return (
               <g key={n.network.name}>
+                {/* Main connector line */}
                 <line
-                  x1={ex} y1={ey}
-                  x2={nx} y2={ny}
+                  x1={startX} y1={startY}
+                  x2={endX} y2={endY}
                   stroke={COLORS.ethereum}
-                  strokeWidth={sw}
-                  strokeOpacity={0.3}
-                  strokeDasharray={dash}
+                  strokeWidth={style.strokeWidth}
+                  strokeOpacity={0.35}
+                  strokeDasharray={style.strokeDasharray}
+                  markerEnd={stage === 2 ? "url(#arrow-end)" : undefined}
+                  markerStart={stage === 2 ? "url(#arrow-start)" : undefined}
                 />
-                {/* Flow particles */}
+                {/* Flow particles / droplets */}
                 {particles.map((p, i) => (
                   <circle
                     key={i}
                     cx={p.px}
                     cy={p.py}
-                    r={2}
+                    r={stage === 0 ? 4 : stage === 1 ? 3 : 2.5}
                     fill={COLORS.ethereum}
-                    opacity={0.7}
+                    opacity={stage === 0 ? 0.9 : 0.7}
                   />
                 ))}
               </g>
             );
           })}
 
-          {/* Nodes */}
+          {/* Network nodes */}
           {nodes.map((n) => {
             const x = n.x || 0;
             const y = n.y || 0;
-            const color = getNodeColor(n.network);
             const isEth = n.network.category === "ethereum";
             const stage = n.network.security_stage;
             const stageColor = stage !== null ? STAGE_COLORS[stage as keyof typeof STAGE_COLORS] : null;
@@ -165,50 +241,44 @@ export function TrellisMap({ networks, sizeMetric }: Props) {
                 onMouseLeave={() => setHoveredNode(null)}
                 onClick={() => setSelectedNetwork(n.network)}
               >
-                {/* Ethereum outer glow */}
-                {isEth && (
-                  <circle r={n.radius + 15} fill={color} opacity={0.15 * ethPulse} filter="url(#eth-glow)" />
-                )}
-
-                {/* Security stage ring */}
+                {/* Security stage ring (L2s only) */}
                 {stageColor && (
                   <circle
-                    r={n.radius + 4}
+                    r={n.radius + 5}
                     fill="none"
                     stroke={stageColor}
                     strokeWidth={3}
-                    opacity={0.7}
+                    opacity={0.8}
                   />
                 )}
 
-                {/* Main circle */}
-                <circle
-                  r={n.radius}
-                  fill={color}
-                  opacity={isEth ? ethPulse * 0.3 + 0.7 : 0.85}
-                  filter={isEth ? "url(#eth-glow)" : "url(#node-glow)"}
+                {/* Main shape */}
+                <NetworkShape
+                  network={n.network}
+                  radius={n.radius}
+                  pulse={isEth ? ethPulse : 1}
                 />
 
-                {/* Stage icon */}
+                {/* Stage indicator icon */}
                 {stage !== null && (
                   <text
-                    y={-n.radius - 8}
+                    y={-n.radius - 10}
                     textAnchor="middle"
-                    fontSize={12}
+                    fontSize={14}
                     fill="white"
                   >
                     {stage === 0 ? "⚠️" : stage === 1 ? "🔒" : "✅"}
                   </text>
                 )}
 
-                {/* Label */}
+                {/* Network name label */}
                 <text
-                  y={n.radius + 16}
+                  y={n.radius + 18}
                   textAnchor="middle"
                   fontSize={13}
                   fontWeight={600}
                   fill="white"
-                  style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                  style={{ textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}
                 >
                   {n.network.name}
                 </text>

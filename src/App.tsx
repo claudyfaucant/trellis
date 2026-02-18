@@ -10,20 +10,17 @@ function App() {
   const {
     typeFilter, setTypeFilter,
     stageFilter, setStageFilter,
-    sizeMetric, setSizeMetric,
     filtered,
   } = useFilters(networks);
 
   return (
     <div className="w-screen h-screen overflow-hidden relative" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <TrellisMap networks={filtered} sizeMetric={sizeMetric} />
+      <TrellisMap networks={filtered} />
       <FilterControls
         typeFilter={typeFilter}
         stageFilter={stageFilter}
-        sizeMetric={sizeMetric}
         onTypeChange={setTypeFilter}
         onStageChange={setStageFilter}
-        onMetricChange={setSizeMetric}
       />
       <Legend />
       <div className="absolute bottom-4 right-4 z-40 text-gray-600 text-xs">

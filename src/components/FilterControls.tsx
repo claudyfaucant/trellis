@@ -1,13 +1,10 @@
 import type { TypeFilter, StageFilter } from "../hooks/useFilters";
-import type { SizeMetric } from "../utils/scales";
 
 interface Props {
   typeFilter: TypeFilter;
   stageFilter: StageFilter;
-  sizeMetric: SizeMetric;
   onTypeChange: (f: TypeFilter) => void;
   onStageChange: (f: StageFilter) => void;
-  onMetricChange: (m: SizeMetric) => void;
 }
 
 function Btn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -26,8 +23,8 @@ function Btn({ active, onClick, children }: { active: boolean; onClick: () => vo
 }
 
 export function FilterControls({
-  typeFilter, stageFilter, sizeMetric,
-  onTypeChange, onStageChange, onMetricChange,
+  typeFilter, stageFilter,
+  onTypeChange, onStageChange,
 }: Props) {
   return (
     <div className="absolute top-4 left-4 z-40 flex flex-wrap gap-4 items-center bg-gray-900/80 backdrop-blur-sm rounded-lg px-4 py-3 border border-gray-800">
@@ -47,11 +44,8 @@ export function FilterControls({
         <Btn active={stageFilter === 2} onClick={() => onStageChange(2)}>2</Btn>
       </div>
       <div className="w-px h-6 bg-gray-700" />
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-gray-500 mr-1 uppercase tracking-wider">Size</span>
-        <Btn active={sizeMetric === "tvl"} onClick={() => onMetricChange("tvl")}>TVL</Btn>
-        <Btn active={sizeMetric === "stablecoins"} onClick={() => onMetricChange("stablecoins")}>Stables</Btn>
-        <Btn active={sizeMetric === "transactions"} onClick={() => onMetricChange("transactions")}>Txns</Btn>
+      <div className="flex items-center gap-1 text-xs text-gray-500">
+        <span>Size = Stablecoin Liquidity</span>
       </div>
     </div>
   );

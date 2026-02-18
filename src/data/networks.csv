@@ -14,7 +14,8 @@ Zora,optimistic_rollup_op,0.05,0.01,180,0,25
 Mode,optimistic_rollup_op,0.12,0.04,65,0,40
 Manta Pacific,optimistic_rollup_op,0.09,0.02,55,0,30
 BOB,optimistic_rollup_op,0.03,0.01,20,0,15
-Bitcoin,L1,0,,,,
-Solana,L1,0,,,,
-Avalanche,L1,0,,,,
-BNB Chain,L1,0,,,,
+Bitcoin,L1,0.0,0.5,350,,
+Solana,L1,0.0,12.5,45000,,
+Avalanche,L1,0.0,1.8,420,,
+BNB Chain,L1,0.0,5.2,3200,,
+Tron,L1,0.0,62.0,8500,,
