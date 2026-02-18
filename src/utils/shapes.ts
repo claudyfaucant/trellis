@@ -91,16 +91,16 @@ export function getShapePath(shape: ShapeType, radius: number): string {
  * Stage 2 = closest (5), Stage 1 = mid (15), Stage 0 = far (30)
  */
 export function getStageDistance(stage: number | null, baseUnit: number): number {
-  if (stage === null) return baseUnit * 60; // External L1s at the outer edge, far from Ethereum
+  if (stage === null) return baseUnit * 50; // External L1s at the outer edge
   
   switch (stage) {
     case 2:
-      return baseUnit * 10;   // Closest to Ethereum
+      return baseUnit * 12;   // Closest to Ethereum
     case 1:
-      return baseUnit * 22;   // Medium distance
+      return baseUnit * 18;   // Medium distance  
     case 0:
     default:
-      return baseUnit * 40;   // Furthest L2s
+      return baseUnit * 32;   // Furthest L2s
   }
 }
 
