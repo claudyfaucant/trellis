@@ -12,7 +12,8 @@ import type { NetworkType } from "../data/types";
 export type ShapeType = "star" | "hexagon" | "diamond" | "pentagon" | "circle";
 
 export function getShapeType(networkType: NetworkType, isEthereum: boolean): ShapeType {
-  if (isEthereum) return "star";
+  // Ethereum is a circle for easier comparison with other L1s
+  if (isEthereum) return "circle";
   
   switch (networkType) {
     case "optimistic_rollup_op":
@@ -90,7 +91,7 @@ export function getShapePath(shape: ShapeType, radius: number): string {
  * Stage 2 = closest (5), Stage 1 = mid (15), Stage 0 = far (30)
  */
 export function getStageDistance(stage: number | null, baseUnit: number): number {
-  if (stage === null) return baseUnit * 40; // External L1s at the edge
+  if (stage === null) return baseUnit * 55; // External L1s at the outer edge, far from Ethereum
   
   switch (stage) {
     case 2:

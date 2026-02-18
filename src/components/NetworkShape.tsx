@@ -22,6 +22,34 @@ export function NetworkShape({ network, radius, pulse = 1 }: Props) {
   const color = getNodeColor(network);
   const path = getShapePath(shape, radius);
   
+  // Ethereum gets special pulsing circle effect
+  if (isEth) {
+    return (
+      <g>
+        {/* Outer glow */}
+        <circle
+          r={radius + 20}
+          fill={color}
+          opacity={0.12 * pulse}
+          filter="url(#eth-glow)"
+        />
+        {/* Inner glow */}
+        <circle
+          r={radius + 8}
+          fill={color}
+          opacity={0.25 * pulse}
+        />
+        {/* Main circle */}
+        <circle
+          r={radius}
+          fill={color}
+          opacity={0.7 + 0.3 * pulse}
+          filter="url(#eth-glow)"
+        />
+      </g>
+    );
+  }
+  
   // Circle uses SVG circle element for smoother rendering
   if (shape === "circle") {
     return (
@@ -31,34 +59,6 @@ export function NetworkShape({ network, radius, pulse = 1 }: Props) {
         opacity={0.85}
         filter="url(#node-glow)"
       />
-    );
-  }
-  
-  // Ethereum gets special pulsing effect
-  if (isEth) {
-    return (
-      <g>
-        {/* Outer glow */}
-        <path
-          d={getShapePath("star", radius + 20)}
-          fill={color}
-          opacity={0.12 * pulse}
-          filter="url(#eth-glow)"
-        />
-        {/* Inner glow */}
-        <path
-          d={getShapePath("star", radius + 8)}
-          fill={color}
-          opacity={0.25 * pulse}
-        />
-        {/* Main shape */}
-        <path
-          d={path}
-          fill={color}
-          opacity={0.7 + 0.3 * pulse}
-          filter="url(#eth-glow)"
-        />
-      </g>
     );
   }
   

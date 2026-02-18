@@ -33,6 +33,8 @@ Trellis visualizes the **security and liquidity landscape** of Ethereum rollups 
 | Stage 1 🔒 | 15 | Dashed line | Safety net — proofs work but security council can intervene |
 | Stage 0 ⚠️ | 30 (furthest) | Droplets → ETH | Training wheels — still relies on trusted operator |
 
+*Note: As of Feb 2025, no major rollup has achieved Stage 2. Arbitrum, Base, OP Mainnet, and Scroll are at Stage 1.*
+
 ### Size = Stablecoin Liquidity
 
 All shapes are scaled proportionally to **stablecoin market cap** on that network:

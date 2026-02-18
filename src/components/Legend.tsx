@@ -6,11 +6,10 @@ export function Legend() {
       {/* Shapes by Network Type */}
       <div className="font-semibold text-gray-300 mb-2 uppercase tracking-wider">Shapes</div>
       <div className="space-y-1.5 mb-3">
-        <ShapeItem shape="star" color={COLORS.ethereum} label="Ethereum" />
+        <ShapeItem shape="circle" color={COLORS.ethereum} label="Ethereum / L1" />
         <ShapeItem shape="hexagon" color={COLORS.optimistic_rollup_op} label="OP Stack" />
         <ShapeItem shape="diamond" color={COLORS.optimistic_rollup_arbitrum} label="Arbitrum Orbit" />
         <ShapeItem shape="pentagon" color={COLORS.zk_rollup} label="ZK Rollup" />
-        <ShapeItem shape="circle" color={COLORS.L1} label="Other L1" />
       </div>
 
       {/* Security Stages */}
@@ -53,6 +52,14 @@ export function Legend() {
           <span>Stage 0: Droplets → ETH</span>
         </div>
       </div>
+
+      {/* Data Sources */}
+      <div className="mt-4 pt-3 border-t border-gray-700">
+        <div className="text-gray-500 text-[10px] space-y-0.5">
+          <div>Data: <a href="https://l2beat.com" target="_blank" rel="noopener" className="text-blue-400 hover:underline">L2Beat</a> (stages, TVL)</div>
+          <div><a href="https://defillama.com" target="_blank" rel="noopener" className="text-blue-400 hover:underline">DefiLlama</a> (stablecoins)</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -61,12 +68,6 @@ function ShapeItem({ shape, color, label }: { shape: string; color: string; labe
   const renderShape = () => {
     const size = 14;
     switch (shape) {
-      case "star":
-        return (
-          <svg width={size} height={size} viewBox="-8 -8 16 16">
-            <path d="M 0,-7 L 2,-2 L 7,-2 L 3,1 L 5,7 L 0,4 L -5,7 L -3,1 L -7,-2 L -2,-2 Z" fill={color} />
-          </svg>
-        );
       case "hexagon":
         return (
           <svg width={size} height={size} viewBox="-8 -8 16 16">
