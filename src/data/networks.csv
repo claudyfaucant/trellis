@@ -1,0 +1,20 @@
+network_name,type,tvl_billion_usd,stablecoin_billion_usd,daily_transactions_thousands,security_stage,monthly_bridge_volume_million_usd
+Ethereum,L1,52.0,85.0,1100,,
+Arbitrum One,optimistic_rollup_arbitrum,2.4,1.9,950,1,850
+Base,optimistic_rollup_op,4.0,5.2,2800,1,720
+OP Mainnet,optimistic_rollup_op,0.8,1.1,380,1,520
+Blast,optimistic_rollup_op,0.4,0.15,120,0,180
+Mantle,optimistic_rollup_op,0.5,0.3,150,0,210
+Starknet,zk_rollup,0.35,0.12,280,0,140
+zkSync Era,zk_rollup,0.45,0.18,320,0,190
+Scroll,zk_rollup,0.22,0.08,95,0,80
+Linea,zk_rollup,0.38,0.14,200,0,120
+Polygon zkEVM,zk_rollup,0.08,0.03,45,0,55
+Zora,optimistic_rollup_op,0.05,0.01,180,0,25
+Mode,optimistic_rollup_op,0.12,0.04,65,0,40
+Manta Pacific,optimistic_rollup_op,0.09,0.02,55,0,30
+BOB,optimistic_rollup_op,0.03,0.01,20,0,15
+Bitcoin,L1,0,,,,
+Solana,L1,0,,,,
+Avalanche,L1,0,,,,
+BNB Chain,L1,0,,,,
